@@ -1,6 +1,6 @@
 -- LIMPIEZA
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_CONTROL_V25" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_SUELO_V26" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,10 +9,10 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_CONTROL_V25"
+ScreenGui.Name = "ANTO_SUELO_V26"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Frame.Position = UDim2.new(0.5, -90, 0.3, 0)
 Frame.Size = UDim2.new(0, 180, 0, 240)
 Frame.Active = true
@@ -39,72 +39,69 @@ local root = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
 local MiBasePos = root.CFrame
 
--- VIAJE SUAVE Y SEGURO (2.5 segundos para evitar que el server te regrese)
-local function ViajeSuave(destino)
+-- MOVIMIENTO PEGADO AL SUELO (EVITA VOLAR)
+local function ViajePorTierra(destino)
+    -- Bajamos velocidad para que el server lo vea legal
+    local velocidadCaminata = 55 
+    local dist = (destino.Position - root.Position).Magnitude
+    local tiempo = dist / velocidadCaminata
+
+    -- Forzamos que el personaje mire hacia el destino
+    root.CFrame = CFrame.new(root.Position, Vector3.new(destino.X, root.Position.Y, destino.Z))
+
+    -- Usamos velocidad constante sin despegar del piso
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(100000, 0, 100000) -- Fuerza CERO en el eje Y (No vuela)
+    bv.Velocity = (Vector3.new(destino.X, 0, destino.Z) - Vector3.new(root.Position.X, 0, root.Position.Z)).Unit * velocidadCaminata
+    bv.Parent = root
+
+    -- Desactivar colisiones con otros jugadores
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = false end
     end
+
+    task.wait(tiempo)
+    bv:Destroy()
     
-    -- Movimiento moderado (2.5 segundos es perfecto para estabilidad)
-    local tw = game:GetService("TweenService"):Create(root, TweenInfo.new(2.5, Enum.EasingStyle.Linear), {CFrame = destino * CFrame.new(0, 2, 0)})
-    tw:Play()
-    tw.Completed:Wait()
-    
-    -- EL "CLAVO": Anclamos 0.7 segundos para asegurar la posición en el server
+    -- "Clavado" final
     root.Anchored = true
-    root.Velocity = Vector3.new(0,0,0)
-    task.wait(0.7) 
+    task.wait(0.5)
     root.Anchored = false
-    
+
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = true end
     end
-    
     hum.Jump = true
 end
 
--- SALTO LARGO SUAVE (Potencia de 70 - Impulso natural)
+-- SALTO LARGO (MODERADO)
 local SaltoLargoActivo = false
 game:GetService("UserInputService").JumpRequest:Connect(function()
     if SaltoLargoActivo and hum:GetState() ~= Enum.HumanoidStateType.Freefall then
-        -- Un impulso de 70 es como una carrera rápida, muy difícil de detectar
-        root.AssemblyLinearVelocity = root.CFrame.LookVector * 70 + Vector3.new(0, 35, 0)
+        -- Salto bajo pero largo
+        root.AssemblyLinearVelocity = root.CFrame.LookVector * 65 + Vector3.new(0, 30, 0)
     end
 end)
 
 -- BOTONES
 btn1.MouseButton1Click:Connect(function()
-    local destino = nil
-    local distMax = 0
+    local target = nil
+    local maxDist = 0
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("BasePart") and (v.Name:lower():find("goal") or v.Name:lower():find("deliver")) then
             local d = (v.Position - MiBasePos.Position).Magnitude
-            if d > distMax then distMax = d; destino = v.CFrame end
+            if d > maxDist then maxDist = d; target = v.CFrame end
         end
     end
-    if destino then ViajeSuave(destino) end
+    if target then ViajePorTierra(target) end
 end)
 
 btn2.MouseButton1Click:Connect(function()
-    ViajeSuave(MiBasePos)
+    ViajePorTierra(MiBasePos)
 end)
 
 btn3.MouseButton1Click:Connect(function()
     SaltoLargoActivo = not SaltoLargoActivo
     btn3.Text = SaltoLargoActivo and "SALTO LARGO: ON" or "SALTO LARGO: OFF"
     btn3.BackgroundColor3 = SaltoLargoActivo and Color3.fromRGB(0, 130, 0) or Color3.fromRGB(60, 60, 60)
-end)
-
--- AUTO-RECOGER (Distancia moderada)
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        for _, p in pairs(workspace:GetDescendants()) do
-            if p:IsA("ProximityPrompt") then
-                if (root.Position - p.Parent.Position).Magnitude < 15 then
-                    fireproximityprompt(p)
-                end
-            end
-        end
-    end
 end)
