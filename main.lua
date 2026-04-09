@@ -1,6 +1,6 @@
--- LIMPIEZA
+-- LIMPIEZA DE INTERFAZ
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_FIX_V11" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_FINAL_V12" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,10 +9,10 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ULTRA_FIX_V11"
+ScreenGui.Name = "ANTO_ULTRA_FINAL_V12"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+Frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 Frame.Position = UDim2.new(0.5, -90, 0.3, 0)
 Frame.Size = UDim2.new(0, 180, 0, 240)
 Frame.Active = true
@@ -30,7 +30,7 @@ local function Estilo(btn, texto, pos, color)
 end
 
 Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(150, 0, 0))
-Estilo(btn2, "2. ANOTAR (PUNTO FIJO)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 150, 50))
+Estilo(btn2, "2. ANOTAR (PUNTO SEGURO)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 180, 100))
 Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(60, 60, 60))
 
 local player = game.Players.LocalPlayer
@@ -41,44 +41,45 @@ local hum = char:WaitForChild("Humanoid")
 -- GUARDA TU BASE
 local MiBasePos = root.CFrame
 
--- FUNCIÓN QUE "CLAVA" TU POSICIÓN EN EL SERVIDOR
-local function ViajeFijo(objetivo)
-    -- 1. Desactivar colisiones
+-- FUNCIÓN DE MOVIMIENTO POR ETAPAS (EVITA EL REGRESO)
+local function ViajeInsuperable(objetivo)
+    -- Desactivamos colisiones para que no choques y mueras
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = false end
     end
 
-    -- 2. RESET de físicas
-    root.Velocity = Vector3.new(0,0,0)
+    local inicio = root.CFrame
+    local etapas = 5 -- Dividimos el viaje en 5 partes
+    
+    for i = 1, etapas do
+        local metaParcial = inicio:Lerp(objetivo, i/etapas)
+        
+        -- Movimiento rápido por etapa
+        local tw = game:GetService("TweenService"):Create(root, TweenInfo.new(0.3, Enum.EasingStyle.Linear), {CFrame = metaParcial})
+        tw:Play()
+        tw.Completed:Wait()
+        
+        -- Micro-espera para que el servidor registre la posición parcial
+        task.wait(0.05)
+    end
 
-    -- 3. VIAJE (Un poco más lento para que el server lo acepte mejor: 1.5s)
-    local info = TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
-    local tw = game:GetService("TweenService"):Create(root, info, {CFrame = objetivo * CFrame.new(0, 1, 0)})
-    tw:Play()
-    tw.Completed:Wait()
-
-    -- 4. EL TRUCO PARA QUE NO TE REGRESE:
-    root.Anchored = true 
-    task.wait(0.5) -- Espera medio segundo (crucial para el server)
+    -- AL LLEGAR AL FINAL:
+    root.Anchored = true
+    task.wait(0.5) -- Pausa de seguridad
     root.Anchored = false
     
-    -- 5. RE-ACTIVAR COLISIONES
+    -- REACTIVAR TODO
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = true end
     end
 
-    -- 6. DOBLE SALTO DE CONFIRMACIÓN (Esto evita el Rubberband)
+    -- FORZAR POSICIÓN FINAL CON SALTO
     hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    task.wait(0.2)
-    hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    
-    -- Caminar un poquito para asegurar el sensor
-    hum:Move(Vector3.new(0, 0, -1), true)
     task.wait(0.1)
-    hum:Move(Vector3.new(0, 0, 0), true)
+    root.CFrame = objetivo
 end
 
--- 1. BASE ENEMIGA
+-- 1. IR A BASE ENEMIGA
 btn1.MouseButton1Click:Connect(function()
     local destino = nil
     for _, v in pairs(workspace:GetDescendants()) do
@@ -89,12 +90,12 @@ btn1.MouseButton1Click:Connect(function()
             end
         end
     end
-    if destino then ViajeFijo(destino) end
+    if destino then ViajeInsuperable(destino) end
 end)
 
--- 2. MI BASE
+-- 2. ANOTAR EN MI BASE
 btn2.MouseButton1Click:Connect(function()
-    ViajeFijo(MiBasePos)
+    ViajeInsuperable(MiBasePos)
 end)
 
 -- 3. SALTO INFINITO
@@ -109,7 +110,7 @@ game:GetService("UserInputService").JumpRequest:Connect(function()
     if SaltoActivo then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
--- AUTO-RECOGER
+-- AUTO-RECOGER (SIEMPRE ACTIVO)
 task.spawn(function()
     while true do
         task.wait(0.1)
