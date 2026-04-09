@@ -30,46 +30,53 @@ local function Estilo(btn, texto, pos, color)
 end
 
 Estilo(btn1, "1. IR AL BRAINROT\n(ENEMIGO)", UDim2.new(0, 10, 0, 10), Color3.fromRGB(200, 0, 0))
-Estilo(btn2, "2. IR A MI BASE\n(ANOTAR)", UDim2.new(0, 10, 0, 90), Color3.fromRGB(0, 120, 255))
+Estilo(btn2, "2. IR A MI BASE\n(ENTREGAR)", UDim2.new(0, 10, 0, 90), Color3.fromRGB(0, 120, 255))
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 
--- GUARDAR MI BASE AL INICIO (Para no ir a la del enemigo)
+-- IMPORTANTE: Ejecuta esto parado en el centro de tu base
 local MiBasePos = root.CFrame
 
--- FUNCIÓN DE TELEPORT SIN ERRORES
-local function IrA(posicion)
+-- FUNCIÓN DE MOVIMIENTO FORZADO (SIN REGRESO)
+local function IrA(posicion, espera)
     root.Velocity = Vector3.new(0,0,0)
+    -- Teleport instantáneo
     root.CFrame = posicion
-    root.Anchored = true -- Te congela para que el server acepte que estás ahí
-    task.wait(0.3) -- Tiempo suficiente para que cuente el punto
+    -- Congelamos al personaje para que el server registre la posición
+    root.Anchored = true
+    task.wait(espera) -- Espera larga para que el punto cuente
     root.Anchored = false
+    -- Pequeño impulso hacia abajo para asegurar contacto con la base
+    root.Velocity = Vector3.new(0, -10, 0)
 end
 
--- 1. IR AL BRAINROT ENEMIGO
+-- 1. BUSCAR EL BRAINROT CORRECTO (EL MÁS LEJANO)
 btn1.MouseButton1Click:Connect(function()
     local target = nil
+    local maxDist = 0
+    
     for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("ProximityPrompt") then
-            -- Solo va si el objeto está lejos de nuestra base (es decir, es del enemigo)
-            local distABase = (v.Parent.Position - MiBasePos.Position).Magnitude
-            if distABase > 50 then
-                target = v.Parent
-                break
+        if v:IsA("ProximityPrompt") and v.Parent:IsA("BasePart") then
+            local dist = (v.Parent.Position - MiBasePos.Position).Magnitude
+            -- Si es el objeto más lejano de nuestra base, es el del enemigo
+            if dist > maxDist then
+                maxDist = dist
+                target = v
             end
         end
     end
     
     if target then
-        IrA(target.CFrame * CFrame.new(0, 2, 0))
+        IrA(target.Parent.CFrame * CFrame.new(0, 3, 0), 0.3)
+        fireproximityprompt(target)
     else
-        -- Si no hay objeto con E, busca al jugador enemigo que lo cargue
+        -- Si no hay objeto suelto, busca al enemigo
         for _, p in pairs(game.Players:GetPlayers()) do
             if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 if p.Character:FindFirstChildOfClass("Tool") then
-                    IrA(p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3))
+                    IrA(p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3), 0.3)
                     break
                 end
             end
@@ -77,17 +84,18 @@ btn1.MouseButton1Click:Connect(function()
     end
 end)
 
--- 2. IR A MI BASE (LA QUE GUARDAMOS AL EMPEZAR)
+-- 2. IR A MI BASE Y ENTREGAR (TIEMPO EXTRA)
 btn2.MouseButton1Click:Connect(function()
-    IrA(MiBasePos * CFrame.new(0, 2, 0))
+    -- Te deja 1 segundo entero anclado para que el punto suba sí o sí
+    IrA(MiBasePos, 1.2) 
 end)
 
--- AUTO-RECOGER (Solo si estás muy cerca, para no abrir tiendas)
+-- AUTO-RECOGER SIEMPRE ACTIVO (Detección muy corta para no buguear)
 game:GetService("RunService").Heartbeat:Connect(function()
     for _, prompt in pairs(workspace:GetDescendants()) do
         if prompt:IsA("ProximityPrompt") then
             local dist = (root.Position - prompt.Parent.Position).Magnitude
-            if dist < 12 then -- Solo lo activa si estás pegado al objeto
+            if dist < 10 then
                 fireproximityprompt(prompt)
             end
         end
