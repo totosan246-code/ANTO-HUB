@@ -1,6 +1,6 @@
--- LIMPIEZA TOTAL
+-- LIMPIEZA DE INTERFAZ
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_WINNER" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_GOD_MODE" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,7 +9,7 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ULTRA_WINNER"
+ScreenGui.Name = "ANTO_GOD_MODE"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
 Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -29,23 +29,46 @@ local function Estilo(btn, texto, pos, color)
     btn.TextSize = 13
 end
 
-Estilo(btn1, "1. IR AL BRAINROT", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
-Estilo(btn2, "2. CORRER A BASE\n(ANOTAR)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 80, 200))
+Estilo(btn1, "1. IR AL BRAINROT\n(POR EL CIELO)", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
+Estilo(btn2, "2. ANOTAR PUNTO\n(VUELO SEGURO)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 80, 200))
 Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(60, 60, 60))
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
+local TweenService = game:GetService("TweenService")
 
--- GUARDA TU BASE (PARADO EN EL CENTRO)
+-- GUARDA TU BASE
 local MiBasePos = root.CFrame
 
--- 1. IR AL BRAINROT (TELEPORT CORTO PARA QUE NO HAGA ROLLBACK)
+-- FUNCIÓN PARA VOLAR RÁPIDO Y SEGURO (NADIE TE TOCA)
+local function VueloSeguro(objetivo)
+    root.Velocity = Vector3.new(0,0,0)
+    
+    -- Subimos primero para que no nos peguen
+    local posicionCielo = root.CFrame * CFrame.new(0, 30, 0)
+    root.CFrame = posicionCielo
+    task.wait(0.05)
+    
+    -- Nos movemos por el aire hasta estar encima del objetivo
+    local destinoArriba = CFrame.new(objetivo.Position.X, posicionCielo.Position.Y, objetivo.Position.Z)
+    local info = TweenInfo.new(1.2, Enum.EasingStyle.Linear)
+    local tw = TweenService:Create(root, info, {CFrame = destinoArriba})
+    tw:Play()
+    tw.Completed:Wait()
+    
+    -- Bajamos en picada para tocar el suelo y anotar
+    root.CFrame = objetivo
+    task.wait(0.1)
+    hum.Jump = true -- Salto final para asegurar el punto
+end
+
+-- 1. IR AL BRAINROT POR ARRIBA
 btn1.MouseButton1Click:Connect(function()
     local target = nil
     for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("ProximityPrompt") then
+        if v:IsA("ProximityPrompt") and v.Enabled then
             if (v.Parent.Position - MiBasePos.Position).Magnitude > 30 then
                 target = v.Parent
                 break
@@ -53,21 +76,16 @@ btn1.MouseButton1Click:Connect(function()
         end
     end
     if target then
-        -- Teleport más cerca, no encima, para que no salte el anti-cheat
-        root.CFrame = target.CFrame * CFrame.new(0, 0, 3)
+        VueloSeguro(target.CFrame * CFrame.new(0, 2, 0))
     end
 end)
 
--- 2. CORRER A BASE (EL MÉTODO QUE SÍ ANOTA)
+-- 2. ANOTAR PUNTO (NADIE TE ALCANZA)
 btn2.MouseButton1Click:Connect(function()
-    -- Subimos la velocidad al máximo permitido para que sea "caminar rápido"
-    hum.WalkSpeed = 100 
-    -- MoveTo es detectado como movimiento legítimo por el servidor
-    hum:MoveTo(MiBasePos.Position)
-    -- El servidor no te regresará porque no es un teleport, es una caminata rápida
+    VueloSeguro(MiBasePos)
 end)
 
--- 3. SALTO INFINITO
+-- 3. SALTO INFINITO (VOLAR MANUAL)
 local SaltoActivo = false
 btn3.MouseButton1Click:Connect(function()
     SaltoActivo = not SaltoActivo
@@ -79,7 +97,7 @@ game:GetService("UserInputService").JumpRequest:Connect(function()
     if SaltoActivo then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
--- AUTO-RECOGER
+-- AUTO-RECOGER (ULTRA RÁPIDO)
 task.spawn(function()
     while true do
         task.wait(0.05)
