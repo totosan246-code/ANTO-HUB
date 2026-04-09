@@ -1,6 +1,6 @@
--- LIMPIEZA TOTAL
+-- LIMPIEZA DE INTERFAZ
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_FINAL_V13" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_FINAL_V14" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,10 +9,10 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ULTRA_FINAL_V13"
+ScreenGui.Name = "ANTO_ULTRA_FINAL_V14"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Frame.Position = UDim2.new(0.5, -90, 0.3, 0)
 Frame.Size = UDim2.new(0, 180, 0, 240)
 Frame.Active = true
@@ -29,8 +29,8 @@ local function Estilo(btn, texto, pos, color)
     btn.TextSize = 13
 end
 
-Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(150, 0, 0))
-Estilo(btn2, "2. ANOTAR (PUNTO REAL)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 180, 50))
+Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
+Estilo(btn2, "2. ANOTAR EN MI BASE", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 120, 255))
 Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(60, 60, 60))
 
 local player = game.Players.LocalPlayer
@@ -38,69 +38,78 @@ local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
 
--- GUARDA TU BASE
+-- DETECCIÓN AUTOMÁTICA DE TU LADO ACTUAL
+-- El script guarda la posición de donde estás parado AHORA mismo como "Mi Base"
 local MiBasePos = root.CFrame
 
--- FUNCIÓN DE CAMINATA ULTRA RÁPIDA (SOLUCIONA EL BUGEO)
-local function ViajeSinBugeo(objetivo)
-    -- 1. Quitar colisiones con jugadores para que no te traben
+local function ViajeDefinitivo(objetivo)
+    -- 1. Seguridad: Desactivar colisiones y limpiar fuerzas
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = false end
     end
-
-    -- 2. Limpiar velocidades
     root.Velocity = Vector3.new(0,0,0)
+    root.RotVelocity = Vector3.new(0,0,0)
 
-    -- 3. MODO CAMINATA FORZADA (Divide el trayecto en 10 partes para que el server lo vea legal)
-    local pasos = 10
-    for i = 1, pasos do
-        local meta = root.CFrame:Lerp(objetivo, i/pasos)
-        
-        -- Usamos Tween corto pero PEGADO al suelo
-        local tw = game:GetService("TweenService"):Create(root, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {CFrame = meta})
+    -- 2. Movimiento en 8 micro-etapas (Anti-Regreso y Anti-Muerte)
+    local etapas = 8
+    for i = 1, etapas do
+        local meta = root.CFrame:Lerp(objetivo * CFrame.new(0, 0.5, 0), i/etapas)
+        local tw = game:GetService("TweenService"):Create(root, TweenInfo.new(0.2, Enum.EasingStyle.Linear), {CFrame = meta})
         tw:Play()
         tw.Completed:Wait()
-        
-        -- "Pisar" el suelo para el servidor
-        root.Velocity = Vector3.new(0, -50, 0) 
+        -- Pequeño pulso para confirmar posición al server
         task.wait(0.02)
     end
 
-    -- 4. CONFIRMACIÓN FINAL
+    -- 3. Frenado en seco antes de tocar suelo
     root.Anchored = true
-    task.wait(0.5) -- Pausa necesaria para que el servidor guarde tu posición
+    root.Velocity = Vector3.new(0,0,0)
+    task.wait(0.4) 
     root.Anchored = false
     
-    -- 5. RE-ACTIVAR FÍSICAS
+    -- 4. Reactivar personaje
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = true end
     end
 
-    -- 6. FORZAR PUNTO (Doble salto y caminata corta)
+    -- 5. Forzar la anotación del punto
     hum:ChangeState(Enum.HumanoidStateType.Jumping)
     task.wait(0.1)
-    hum:Move(Vector3.new(0,0,1), true)
-    task.wait(0.1)
-    hum:Move(Vector3.new(0,0,0), true)
+    root.CFrame = objetivo
 end
 
--- 1. BASE ENEMIGA
+-- 1. LÓGICA PARA IR A LA BASE DEL FRENTE (NO IMPORTA EL LADO)
 btn1.MouseButton1Click:Connect(function()
-    local destino = nil
+    local destinoEnemigo = nil
+    local mayorDistancia = 0
+    
+    -- Buscamos el punto de entrega más lejano (esa es la base enemiga)
     for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") and (v.Name:lower():find("goal") or v.Name:lower():find("base")) then
-            if (v.Position - MiBasePos.Position).Magnitude > 60 then
-                destino = v.CFrame
+        if v:IsA("BasePart") and (v.Name:lower():find("goal") or v.Name:lower():find("deliver") or v.Name:lower():find("spawn")) then
+            local distancia = (v.Position - MiBasePos.Position).Magnitude
+            if distancia > mayorDistancia then
+                mayorDistancia = distancia
+                destinoEnemigo = v.CFrame
+            end
+        end
+    end
+    
+    if destinoEnemigo then
+        ViajeDefinitivo(destinoEnemigo * CFrame.new(0, 2, 0))
+    else
+        -- Si no encuentra la base, va al oponente más lejano
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                ViajeDefinitivo(p.Character.HumanoidRootPart.CFrame)
                 break
             end
         end
     end
-    if destino then ViajeSinBugeo(destino) end
 end)
 
--- 2. MI BASE
+-- 2. VOLVER A MI LADO ACTUAL
 btn2.MouseButton1Click:Connect(function()
-    ViajeSinBugeo(MiBasePos)
+    ViajeDefinitivo(MiBasePos)
 end)
 
 -- 3. SALTO INFINITO
@@ -115,13 +124,13 @@ game:GetService("UserInputService").JumpRequest:Connect(function()
     if SaltoActivo then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
--- AUTO-RECOGER
+-- RECOGER AUTOMÁTICO
 task.spawn(function()
     while true do
         task.wait(0.1)
         for _, p in pairs(workspace:GetDescendants()) do
             if p:IsA("ProximityPrompt") then
-                if (root.Position - p.Parent.Position).Magnitude < 15 then
+                if (root.Position - p.Parent.Position).Magnitude < 18 then
                     fireproximityprompt(p)
                 end
             end
