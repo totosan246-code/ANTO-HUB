@@ -6,68 +6,64 @@ local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 
 local Tab = Window:NewTab("MODO DUELOS")
-local Section = Tab:NewSection("Ciclo de Victoria Rápida")
+local Section = Tab:NewSection("Controles de Victoria")
 
--- 1. IR Y ROBAR (TP + AUTO-E)
-Section:NewButton("🚀 IR Y ROBAR BRAINROT", "TP directo + Agarre instantáneo", function()
-    -- Detener inercia para evitar lag/rubberband
+-- 1. TELEPORT AL BRAINROT (BUSQUEDA AGRESIVA)
+Section:NewButton("1. IR AL BRAINROT", "Te lleva frente al objetivo", function()
     root.Velocity = Vector3.new(0,0,0)
+    local encontrado = false
     
-    local target = nil
-    -- Buscamos el Brainrot por su ProximityPrompt (la letra E)
+    -- Busca cualquier letra E en el mapa
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("ProximityPrompt") then
-            target = obj
+            root.CFrame = obj.Parent.CFrame * CFrame.new(0, 2, 0)
+            encontrado = true
             break
         end
     end
     
-    if target then
-        -- Teleport exacto
-        root.CFrame = target.Parent.CFrame * CFrame.new(0, 2, 0)
-        
-        -- Truco Anti-Bug: Anclar un milisegundo para que el server no te jale
-        root.Anchored = true
-        task.wait(0.1)
-        root.Anchored = false
-        
-        -- Robo automático (Presiona la E por ti)
-        fireproximityprompt(target)
-    else
-        print("Esperando a que aparezca el Brainrot...")
-    end
-end)
-
--- 2. IR A MI BASE (TP PARA PUNTO)
-Section:NewButton("🏠 IR A MI BASE (PUNTO)", "Regresa al spawn para anotar", function()
-    root.Velocity = Vector3.new(0,0,0)
-    
-    -- En Duelos, tu base es tu punto de aparición
-    local mySpawn = player.RespawnLocation
-    if mySpawn then
-        root.CFrame = mySpawn.CFrame * CFrame.new(0, 4, 0)
-        
-        -- Anclamos para confirmar posición
-        root.Anchored = true
-        task.wait(0.1)
-        root.Anchored = false
-    end
-end)
-
--- 3. MEJORAS DE COMBATE
-local Section2 = Tab:NewSection("Configuración")
-
-Section2:NewToggle("ANTI RAGDOLL", "Levantarse al instante", function(state)
-    _G.Anti = state
-    game:GetService("RunService").Stepped:Connect(function()
-        if _G.Anti and char:FindFirstChild("Humanoid") then
-            char.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    -- Si no hay E, busca cualquier objeto que se mueva (el Brainrot que lleva el otro)
+    if not encontrado then
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                -- Si el enemigo tiene una herramienta (el brainrot)
+                if p.Character:FindFirstChildOfClass("Tool") then
+                    root.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+                end
+            end
         end
-    end)
+    end
 end)
 
-Section2:NewSlider("VELOCIDAD", "Velocidad recomendada: 80", 150, 16, function(s)
-    if char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = s
+-- 2. ROBAR AHORA (PRESIONAR E)
+Section:NewButton("2. ROBAR (PRESIONAR E)", "Presiona la letra E instantáneo", function()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            fireproximityprompt(obj) -- Fuerza la letra E
+        end
     end
+end)
+
+-- 3. IR A MI BASE (PUNTO)
+Section:NewButton("3. IR A MI BASE", "Vuelve al spawn para anotar", function()
+    root.Velocity = Vector3.new(0,0,0)
+    -- Teleport al SpawnPoint del jugador
+    local spawn = player.RespawnLocation
+    if spawn then
+        root.CFrame = spawn.CFrame * CFrame.new(0, 4, 0)
+    else
+        -- Si no hay spawn, busca la zona de entrega
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v.Name:find("Goal") or v.Name:find("Base") then
+                root.CFrame = v.CFrame * CFrame.new(0, 4, 0)
+                break
+            end
+        end
+    end
+end)
+
+-- EXTRA PARA QUE NO TE MATEN
+local Section2 = Tab:NewSection("Ajustes")
+Section2:NewSlider("VELOCIDAD", "Corre mas", 150, 16, function(s)
+    char.Humanoid.WalkSpeed = s
 end)
