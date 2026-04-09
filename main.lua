@@ -1,69 +1,75 @@
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("NEW DUELOS V1.1 🔴", "BloodTheme")
+-- CREAR INTERFAZ SIMPLE (SIN LIBRERÍAS FALLIDAS)
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local btnRobar = Instance.new("TextButton")
+local btnBase = Instance.new("TextButton")
+local btnE = Instance.new("TextButton")
+
+ScreenGui.Parent = game.CoreGui
+Frame.Parent = ScreenGui
+Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Frame.Position = UDim2.new(0.1, 0, 0.1, 0)
+Frame.Size = UDim2.new(0, 200, 0, 250)
+Frame.Active = true
+Frame.Draggable = true
+
+local function Estilo(btn, texto, pos, color)
+    btn.Parent = Frame
+    btn.Text = texto
+    btn.Size = UDim2.new(0, 180, 0, 60)
+    btn.Position = pos
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 20
+end
+
+Estilo(btnRobar, "1. IR AL BRAINROT", UDim2.new(0, 10, 0, 10), Color3.fromRGB(200, 0, 0))
+Estilo(btnE, "2. AGARRAR (LETRA E)", UDim2.new(0, 10, 0, 80), Color3.fromRGB(0, 150, 0))
+Estilo(btnBase, "3. IR A MI BASE", UDim2.new(0, 10, 0, 150), Color3.fromRGB(0, 0, 200))
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 
-local Tab = Window:NewTab("MODO DUELOS")
-local Section = Tab:NewSection("Controles de Victoria")
-
--- 1. TELEPORT AL BRAINROT (BUSQUEDA AGRESIVA)
-Section:NewButton("1. IR AL BRAINROT", "Te lleva frente al objetivo", function()
+-- 1. TELEPORT AL BRAINROT (BUSCANDO EL MODELO)
+btnRobar.MouseButton1Click:Connect(function()
     root.Velocity = Vector3.new(0,0,0)
     local encontrado = false
-    
-    -- Busca cualquier letra E en el mapa
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") then
-            root.CFrame = obj.Parent.CFrame * CFrame.new(0, 2, 0)
+    -- Escanea el mapa buscando el objeto
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name:find("Brain") or v.Name == "Object" or v:IsA("ProximityPrompt") then
+            local pos = v:IsA("ProximityPrompt") and v.Parent.CFrame or v.CFrame
+            root.CFrame = pos * CFrame.new(0, 2, 0)
             encontrado = true
             break
         end
     end
-    
-    -- Si no hay E, busca cualquier objeto que se mueva (el Brainrot que lleva el otro)
-    if not encontrado then
-        for _, p in pairs(game.Players:GetPlayers()) do
-            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                -- Si el enemigo tiene una herramienta (el brainrot)
-                if p.Character:FindFirstChildOfClass("Tool") then
-                    root.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
-                end
-            end
+end)
+
+-- 2. PRESIONAR E (INSTANTÁNEO)
+btnE.MouseButton1Click:Connect(function()
+    for _, prompt in pairs(workspace:GetDescendants()) do
+        if prompt:IsA("ProximityPrompt") then
+            fireproximityprompt(prompt)
         end
     end
 end)
 
--- 2. ROBAR AHORA (PRESIONAR E)
-Section:NewButton("2. ROBAR (PRESIONAR E)", "Presiona la letra E instantáneo", function()
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") then
-            fireproximityprompt(obj) -- Fuerza la letra E
-        end
-    end
-end)
-
--- 3. IR A MI BASE (PUNTO)
-Section:NewButton("3. IR A MI BASE", "Vuelve al spawn para anotar", function()
+-- 3. IR A MI BASE (DIRECTO AL SPAWN)
+btnBase.MouseButton1Click:Connect(function()
     root.Velocity = Vector3.new(0,0,0)
-    -- Teleport al SpawnPoint del jugador
+    -- En Duelos, el spawn es la base. 
     local spawn = player.RespawnLocation
     if spawn then
         root.CFrame = spawn.CFrame * CFrame.new(0, 4, 0)
     else
-        -- Si no hay spawn, busca la zona de entrega
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v.Name:find("Goal") or v.Name:find("Base") then
-                root.CFrame = v.CFrame * CFrame.new(0, 4, 0)
+        -- Si no detecta spawn, busca la parte que se llame 'Goal'
+        for _, g in pairs(workspace:GetDescendants()) do
+            if g.Name:find("Goal") or g.Name:find("Base") then
+                root.CFrame = g.CFrame * CFrame.new(0, 4, 0)
                 break
             end
         end
     end
-end)
-
--- EXTRA PARA QUE NO TE MATEN
-local Section2 = Tab:NewSection("Ajustes")
-Section2:NewSlider("VELOCIDAD", "Corre mas", 150, 16, function(s)
-    char.Humanoid.WalkSpeed = s
 end)
