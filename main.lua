@@ -1,6 +1,6 @@
 -- LIMPIEZA TOTAL
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_ALPHA_V19" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_GOD_V20" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,10 +9,10 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ALPHA_V19"
+ScreenGui.Name = "ANTO_GOD_V20"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 Frame.Position = UDim2.new(0.5, -90, 0.3, 0)
 Frame.Size = UDim2.new(0, 180, 0, 240)
 Frame.Active = true
@@ -26,41 +26,42 @@ local function Estilo(btn, texto, pos, color)
     btn.BackgroundColor3 = color
     btn.TextColor3 = Color3.new(1, 1, 1)
     btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 13
+    btn.TextSize = 12
 end
 
-Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(200, 0, 0))
-Estilo(btn2, "2. ANOTAR EN MI BASE", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 120, 255))
-Estilo(btn3, "SALTO LARGO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(100, 0, 200))
+Estilo(btn1, "1. BASE ENEMIGA (FLASH)", UDim2.new(0, 10, 0, 10), Color3.fromRGB(200, 0, 0))
+Estilo(btn2, "2. ANOTAR (NO REGRESO)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 120, 255))
+Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(80, 80, 80))
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
-
 local MiBasePos = root.Position
 
--- FUNCIÓN DE VIAJE ULTRA RÁPIDO (LÍMITE 115)
-local function ViajeAlpha(destinoPos)
+-- FUNCIÓN VELOCIDAD MÁXIMA (135 - LÍMITE ABSOLUTO)
+local function ViajeVeloz(destinoPos)
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = false end
     end
 
     local speedOriginal = hum.WalkSpeed
-    hum.WalkSpeed = 115 -- VELOCIDAD MÁXIMA SEGURA
+    hum.WalkSpeed = 135 -- VELOCIDAD EXTREMA
     
     hum:MoveTo(destinoPos)
     
-    local timeout = 0
-    while (root.Position - destinoPos).Magnitude > 4 and timeout < 100 do
+    local start = tick()
+    while (root.Position - destinoPos).Magnitude > 5 and tick() - start < 8 do
         hum:MoveTo(destinoPos)
-        task.wait(0.05)
-        timeout = timeout + 1
+        -- Mini-salto durante el viaje para que el server no te trabe
+        if math.random(1,20) == 10 then hum.Jump = true end 
+        task.wait(0.02)
     end
 
     hum.WalkSpeed = speedOriginal
+    -- Anclaje ultra corto para confirmar posición sin que te maten
     root.Anchored = true
-    task.wait(0.2) -- Frenado más rápido
+    task.wait(0.15)
     root.Anchored = false
     
     for _, part in pairs(char:GetDescendants()) do
@@ -69,14 +70,14 @@ local function ViajeAlpha(destinoPos)
     hum.Jump = true
 end
 
--- LÓGICA DE SALTO LARGO (IMPULSO)
-local SaltoLargoActivo = false
+-- SALTO INFINITO ANTI-MUERTE
+local SaltoActivo = false
 game:GetService("UserInputService").JumpRequest:Connect(function()
-    if SaltoLargoActivo then
-        -- Nos aseguramos de que solo lo haga si está en el suelo o saltando
-        if hum:GetState() ~= Enum.HumanoidStateType.Freefall then
-            root:ApplyImpulse(root.CFrame.LookVector * 150 + Vector3.new(0, 50, 0))
-        end
+    if SaltoActivo then
+        -- En lugar de volar, forzamos un estado de salto constante
+        -- Esto evita que el server detecte "FlyHack"
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        root.Velocity = Vector3.new(root.Velocity.X, 50, root.Velocity.Z)
     end
 end)
 
@@ -90,26 +91,26 @@ btn1.MouseButton1Click:Connect(function()
             if d > maxDist then maxDist = d; destino = v.Position end
         end
     end
-    if destino then ViajeAlpha(destino) end
+    if destino then ViajeVeloz(destino) end
 end)
 
 btn2.MouseButton1Click:Connect(function()
-    ViajeAlpha(MiBasePos)
+    ViajeVeloz(MiBasePos)
 end)
 
 btn3.MouseButton1Click:Connect(function()
-    SaltoLargoActivo = not SaltoLargoActivo
-    btn3.Text = SaltoLargoActivo and "SALTO LARGO: ON" or "SALTO LARGO: OFF"
-    btn3.BackgroundColor3 = SaltoLargoActivo and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(100, 0, 200)
+    SaltoActivo = not SaltoActivo
+    btn3.Text = SaltoActivo and "SALTO INFINITO: ON" or "SALTO INFINITO: OFF"
+    btn3.BackgroundColor3 = SaltoActivo and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(80, 80, 80)
 end)
 
--- AUTO-RECOGER
+-- AUTO-RECOGER (RANGO MÁXIMO)
 task.spawn(function()
     while true do
         task.wait(0.1)
         for _, p in pairs(workspace:GetDescendants()) do
             if p:IsA("ProximityPrompt") then
-                if (root.Position - p.Parent.Position).Magnitude < 22 then
+                if (root.Position - p.Parent.Position).Magnitude < 25 then
                     fireproximityprompt(p)
                 end
             end
