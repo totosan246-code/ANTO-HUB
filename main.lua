@@ -1,6 +1,6 @@
--- LIMPIEZA DE SCRIPTS
+-- LIMPIEZA
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_V8" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_V9" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,10 +9,10 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ULTRA_V8"
+ScreenGui.Name = "ANTO_ULTRA_V9"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Frame.Position = UDim2.new(0.5, -90, 0.3, 0)
 Frame.Size = UDim2.new(0, 180, 0, 240)
 Frame.Active = true
@@ -29,42 +29,48 @@ local function Estilo(btn, texto, pos, color)
     btn.TextSize = 13
 end
 
-Estilo(btn1, "1. IR A PUERTA ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
-Estilo(btn2, "2. ANOTAR (ENTRADA SUAVE)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 150, 255))
-Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(50, 50, 50))
+Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(200, 0, 0))
+Estilo(btn2, "2. ANOTAR (MODO FANTASMA)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 120, 255))
+Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(60, 60, 60))
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
 
--- GUARDA TU BASE (Hazlo parado exactamente donde se anota)
+-- GUARDA TU BASE
 local MiBasePos = root.CFrame
 
-local function MoverSeguro(objetivo)
-    -- RESET DE VELOCIDAD INICIAL
+-- FUNCIÓN FANTASMA (ATRAVIESA TODO Y NO MUERE)
+local function ViajeFantasma(objetivo)
+    -- 1. Desactivamos colisiones para que nada te mate al chocar
+    for _, part in pairs(char:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+    
+    -- 2. Quitamos la gravedad
     root.Velocity = Vector3.new(0,0,0)
     
-    -- PASO 1: Viaje rápido hasta 6 metros ANTES de la base
-    local puntoEspera = objetivo * CFrame.new(0, 0, 6) 
-    local tw1 = game:GetService("TweenService"):Create(root, TweenInfo.new(0.6, Enum.EasingStyle.Linear), {CFrame = puntoEspera})
-    tw1:Play()
-    tw1.Completed:Wait()
+    -- 3. Movimiento suave en curva (para engañar al Anti-Cheat)
+    local info = TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+    local tw = game:GetService("TweenService"):Create(root, info, {CFrame = objetivo * CFrame.new(0, 1, 0)})
     
-    -- PASO 2: PARADA TÉCNICA (Limpieza de rastro del Anti-Cheat)
-    root.Anchored = true
-    root.Velocity = Vector3.new(0,0,0)
-    task.wait(0.3) -- Tiempo para que el servidor deje de sospechar
-    root.Anchored = false
+    tw:Play()
+    tw.Completed:Wait()
     
-    -- PASO 3: ENTRADA SUAVE (Velocidad "legal")
-    local tw2 = game:GetService("TweenService"):Create(root, TweenInfo.new(0.4, Enum.EasingStyle.QuadOut), {CFrame = objetivo})
-    tw2:Play()
-    tw2.Completed:Wait()
-    
-    -- PASO 4: ACTIVAR PUNTO
+    -- 4. Re-activamos todo al llegar
     task.wait(0.1)
-    hum.Jump = true
+    for _, part in pairs(char:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+    
+    -- 5. Forzamos el punto
+    root.Velocity = Vector3.new(0, -5, 0)
+    hum:ChangeState(Enum.HumanoidStateType.Jumping)
 end
 
 -- 1. BASE ENEMIGA
@@ -78,12 +84,12 @@ btn1.MouseButton1Click:Connect(function()
             end
         end
     end
-    if destino then MoverSeguro(destino) end
+    if destino then ViajeFantasma(destino) end
 end)
 
 -- 2. MI BASE
 btn2.MouseButton1Click:Connect(function()
-    MoverSeguro(MiBasePos)
+    ViajeFantasma(MiBasePos)
 end)
 
 -- 3. SALTO INFINITO
@@ -91,7 +97,7 @@ local SaltoActivo = false
 btn3.MouseButton1Click:Connect(function()
     SaltoActivo = not SaltoActivo
     btn3.Text = SaltoActivo and "SALTO INFINITO: ON" or "SALTO INFINITO: OFF"
-    btn3.BackgroundColor3 = SaltoActivo and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(50, 50, 50)
+    btn3.BackgroundColor3 = SaltoActivo and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(60, 60, 60)
 end)
 
 game:GetService("UserInputService").JumpRequest:Connect(function()
