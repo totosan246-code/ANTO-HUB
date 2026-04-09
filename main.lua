@@ -1,111 +1,98 @@
--- LIMPIEZA DE INTERFACES VIEJAS
+-- LIMPIEZA TOTAL DE INTERFACES
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and (v.Name == "ScreenGui" or v:FindFirstChild("Frame")) then
-        v:Destroy()
-    end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_PVP_FIX" then v:Destroy() end
 end
 
--- INTERFAZ NUEVA Y LIMPIA
 local ScreenGui = Instance.new("ScreenGui")
 local Frame = Instance.new("Frame")
-local btnRobar = Instance.new("TextButton")
-local btnBase = Instance.new("TextButton")
+local btn1 = Instance.new("TextButton")
+local btn2 = Instance.new("TextButton")
+local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ULTRA_V1"
+ScreenGui.Name = "ANTO_PVP_FIX"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Frame.Position = UDim2.new(0.5, -100, 0.4, 0)
-Frame.Size = UDim2.new(0, 200, 0, 180)
-Frame.BorderSizePixel = 2
+Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Frame.Position = UDim2.new(0.5, -90, 0.3, 0)
+Frame.Size = UDim2.new(0, 180, 0, 240)
 Frame.Active = true
 Frame.Draggable = true
 
 local function Estilo(btn, texto, pos, color)
     btn.Parent = Frame
     btn.Text = texto
-    btn.Size = UDim2.new(0, 180, 0, 70)
+    btn.Size = UDim2.new(0, 160, 0, 60)
     btn.Position = pos
     btn.BackgroundColor3 = color
     btn.TextColor3 = Color3.new(1, 1, 1)
     btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 18
-    btn.BorderSizePixel = 0
+    btn.TextSize = 16
+    btn.BorderSizePixel = 2
 end
 
-Estilo(btnRobar, "1. IR AL BRAINROT\n(TP + AUTO-E)", UDim2.new(0, 10, 0, 10), Color3.fromRGB(200, 0, 0))
-Estilo(btnBase, "2. IR A MI BASE\n(ANOTAR)", UDim2.new(0, 10, 0, 100), Color3.fromRGB(0, 100, 200))
+Estilo(btn1, "1. IR AL BRAINROT", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
+Estilo(btn2, "2. AUTO E (ROBAR)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 130, 0))
+Estilo(btn3, "3. IR A MI BASE", UDim2.new(0, 10, 0, 160), Color3.fromRGB(0, 80, 180))
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 
--- FUNCIÓN PARA MOVERSE SIN QUE EL JUEGO TE REGRESE
-local function safeTeleport(cframe)
+-- FUNCIÓN PARA MOVERSE SIN QUE EL JUEGO TE REGRESE (ANTI-RUBBERBAND)
+local function IrA(posicion)
     root.Velocity = Vector3.new(0,0,0)
-    root.CFrame = cframe
-    -- Congelar un instante para engañar al Anti-Cheat
+    -- Pequeño salto antes de ir para "despegar" del suelo
+    root.CFrame = root.CFrame * CFrame.new(0, 2, 0)
+    task.wait(0.05)
+    root.CFrame = posicion
+    -- Congelar 0.2 segundos para que el servidor acepte la posición
     root.Anchored = true
-    task.wait(0.15)
+    task.wait(0.2)
     root.Anchored = false
 end
 
--- 1. IR AL BRAINROT DEL ENEMIGO + AUTO AGARRAR
-btnRobar.MouseButton1Click:Connect(function()
-    local target = nil
+-- 1. IR AL BRAINROT (BUSCAR LA E DEL OTRO)
+btn1.MouseButton1Click:Connect(function()
+    local encontrado = false
     for _, v in pairs(workspace:GetDescendants()) do
-        -- Busca el Brainrot que NO sea el nuestro (el que tenga la letra E)
         if v:IsA("ProximityPrompt") then
-            target = v
+            IrA(v.Parent.CFrame * CFrame.new(0, 2, 0))
+            encontrado = true
             break
         end
     end
-
-    if target then
-        -- Ir al objeto
-        safeTeleport(target.Parent.CFrame * CFrame.new(0, 2, 0))
-        -- Agarrar automáticamente
-        task.wait(0.05)
-        fireproximityprompt(target)
-    else
-        -- Si el enemigo ya lo tiene, vamos a su posición
+    if not encontrado then
+        -- Si el enemigo ya lo tiene
         for _, p in pairs(game.Players:GetPlayers()) do
             if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 if p.Character:FindFirstChildOfClass("Tool") then
-                    safeTeleport(p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3))
-                    break
+                    IrA(p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3))
                 end
             end
         end
     end
 end)
 
--- 2. IR A MI BASE (PUNTO SEGURO)
-btnBase.MouseButton1Click:Connect(function()
-    -- En Duelos, el spawn es la base. 
+-- 2. AUTO E (PRESIONAR AL INSTANTE)
+btn2.MouseButton1Click:Connect(function()
+    for _, p in pairs(workspace:GetDescendants()) do
+        if p:IsA("ProximityPrompt") then
+            fireproximityprompt(p)
+        end
+    end
+end)
+
+-- 3. IR A MI BASE (DIRECTO AL SPAWN DEFINIDO)
+btn3.MouseButton1Click:Connect(function()
     local spawn = player.RespawnLocation
     if spawn then
-        safeTeleport(spawn.CFrame * CFrame.new(0, 4, 0))
+        IrA(spawn.CFrame * CFrame.new(0, 4, 0))
     else
-        -- Si no detecta spawn, busca la zona de entrega por nombre común
+        -- Si no hay spawn, busca la zona de entrega lejos del enemigo
         for _, g in pairs(workspace:GetDescendants()) do
-            if g.Name:find("Goal") or g.Name:find("Base") or g.Name:find("Deliver") then
-                if (g.Position - root.Position).Magnitude > 50 then -- Para no ir a la base enemiga
-                    safeTeleport(g.CFrame * CFrame.new(0, 4, 0))
-                    break
-                end
-            end
-        end
-    end
-end)
-
--- AUTO-INTERACT SIEMPRE ACTIVO (Si estás cerca, pulsa E solo)
-game:GetService("RunService").Stepped:Connect(function()
-    for _, prompt in pairs(workspace:GetDescendants()) do
-        if prompt:IsA("ProximityPrompt") then
-            local dist = (root.Position - prompt.Parent.Position).Magnitude
-            if dist < 15 then
-                fireproximityprompt(prompt)
+            if (g.Name:find("Goal") or g.Name:find("Deliver")) and g:IsA("BasePart") then
+                IrA(g.CFrame * CFrame.new(0, 4, 0))
+                break
             end
         end
     end
