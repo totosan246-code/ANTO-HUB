@@ -1,72 +1,68 @@
--- ANTO-HUB V2: ANTI-LAG & AUTO-STEAL
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local root = character:WaitForChild("HumanoidRootPart")
-local hum = character:WaitForChild("Humanoid")
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("ANTO-HUB 🚀 (MODO DUELOS)", "BloodTheme")
 
--- CONFIGURACIÓN
-local rangoAtaque = 15
-local velocidadVuelo = 50
+-- PESTAÑA DE ROBO
+local Tab1 = Window:NewTab("Robo Instantáneo")
+local Section1 = Tab1:NewSection("Teleports de Objetos")
 
--- 1. TELEPORT AL BRAINROT (PARA ROBAR)
--- El script busca objetos que se llamen "Brainrot" en el mapa
-local function irPorBrainrot()
+Section1:NewButton("Ir frente al Brainrot", "Te pone cara a cara con el objetivo", function()
     for _, obj in pairs(game.Workspace:GetDescendants()) do
-        if obj.Name == "Brainrot" and obj:IsA("BasePart") then
-            -- Te lleva justo encima del Brainrot para cogerlo
-            root.CFrame = obj.CFrame * CFrame.new(0, 2, 0)
+        if (obj.Name == "Brainrot" or obj:FindFirstChild("Brainrot")) and obj:IsA("BasePart") then
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = obj.CFrame * CFrame.new(0, 0, -3)
             break
         end
     end
-end
+end)
 
--- 2. KILL AURA + TP AL ENEMIGO (Si tienes el arma en mano)
-task.spawn(function()
-    while task.wait(0.1) do
-        local tool = character:FindFirstChildOfClass("Tool")
-        if tool then
-            for _, enemigo in pairs(game.Players:GetPlayers()) do
-                if enemigo ~= player and enemigo.Character and enemigo.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = (root.Position - enemigo.Character.HumanoidRootPart.Position).Magnitude
-                    if dist < rangoAtaque then
-                        -- Te pega al enemigo para que no falle el bate
-                        root.CFrame = enemigo.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2)
-                        tool:Activate()
-                        -- Daño directo
-                        if tool:FindFirstChild("Handle") then
-                            firetouchinterest(enemigo.Character.Head, tool.Handle, 0)
-                            firetouchinterest(enemigo.Character.Head, tool.Handle, 1)
-                        end
-                    end
-                end
+Section1:NewButton("Robo Instantáneo", "TP + Coger", function()
+    for _, obj in pairs(game.Workspace:GetDescendants()) do
+        if (obj.Name == "Brainrot") and obj:IsA("BasePart") then
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = obj.CFrame
+            -- Intenta activar la herramienta si la tienes
+            local tool = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
+            if tool then tool:Activate() end
+            break
+        end
+    end
+end)
+
+Section1:NewButton("Ir a mi Base (Entrega)", "Vuelve rápido para ganar", function()
+    -- Este busca el Spawn de tu equipo
+    local player = game.Players.LocalPlayer
+    local spawn = player.RespawnLocation
+    if spawn then
+        player.Character.HumanoidRootPart.CFrame = spawn.CFrame * CFrame.new(0, 3, 0)
+    else
+        -- Si no hay spawn, intenta buscar una zona llamada 'Base' o 'Delivery'
+        print("Buscando zona de entrega...")
+    end
+end)
+
+-- PESTAÑA DE PVP AGRESIVO
+local Tab2 = Window:NewTab("PVP Agresivo")
+local Section2 = Tab2:NewSection("Venganza")
+
+Section2:NewButton("TP al Ladrón (Enemigo)", "Te lleva frente al que tiene el Brainrot", function()
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= game.Players.LocalPlayer and v.Character then
+            -- Si el enemigo tiene algo llamado Brainrot en su mano o espalda
+            if v.Character:FindFirstChild("Brainrot") or v.Character:FindFirstChildOfClass("Tool") then
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+                break
             end
         end
     end
 end)
 
--- 3. FLOTAR (Mantener Espacio)
-game:GetService("UserInputService").InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.Space then
-        local bV = Instance.new("BodyVelocity", root)
-        bV.Velocity = Vector3.new(0, velocidadVuelo, 0)
-        bV.MaxForce = Vector3.new(0, math.huge, 0)
-        bV.Name = "FloatForce"
-        
-        repeat task.wait() until not game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space)
-        if root:FindFirstChild("FloatForce") then root.FloatForce:Destroy() end
-    end
+-- VELOCIDAD SIN LAG
+local Tab3 = Window:NewTab("Ajustes")
+local Section3 = Tab3:NewSection("Movimiento")
+
+Section3:NewSlider("Velocidad Pro (Sin Lag)", "Aumenta poco a poco", 200, 16, function(s)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
 end)
 
--- 4. ANTI-GOLPE (No te caes)
-hum.StateChanged:Connect(function(_, nuevoEstado)
-    if nuevoEstado == Enum.HumanoidStateType.FallingDown or nuevoEstado == Enum.HumanoidStateType.PlatformStanding then
-        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-    end
+-- FLOTAR (ESPACIO) - Siempre activo
+game:GetService("UserInputService").JumpRequest:Connect(function()
+    game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
 end)
-
--- TECLA PARA IR AL BRAINROT (Presiona "Q" o un botón en pantalla)
--- Como estás en móvil con Delta, te he puesto este comando para que lo actives:
-print("ANTO-HUB: Presiona el botón de 'Robar' en tu menú")
-
--- Función para que lo actives cuando quieras
-_G.RobarAhora = irPorBrainrot
