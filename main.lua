@@ -1,6 +1,6 @@
--- LIMPIEZA TOTAL
+-- LIMPIEZA DE SCRIPTS
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_V7" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_V8" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,7 +9,7 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ULTRA_V7"
+ScreenGui.Name = "ANTO_ULTRA_V8"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
 Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -29,8 +29,8 @@ local function Estilo(btn, texto, pos, color)
     btn.TextSize = 13
 end
 
-Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
-Estilo(btn2, "2. ANOTAR EN MI BASE", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 150, 255))
+Estilo(btn1, "1. IR A PUERTA ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
+Estilo(btn2, "2. ANOTAR (ENTRADA SUAVE)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 150, 255))
 Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(50, 50, 50))
 
 local player = game.Players.LocalPlayer
@@ -38,30 +38,33 @@ local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
 
--- GUARDA TU BASE (PARADO EN EL CENTRO)
+-- GUARDA TU BASE (Hazlo parado exactamente donde se anota)
 local MiBasePos = root.CFrame
 
--- FUNCIÓN QUE ELIMINA LA VELOCIDAD DE MUERTE
-local function ViajeLimpio(objetivo)
-    -- 1. Detener movimiento actual
+local function MoverSeguro(objetivo)
+    -- RESET DE VELOCIDAD INICIAL
     root.Velocity = Vector3.new(0,0,0)
-    root.RotVelocity = Vector3.new(0,0,0)
     
-    -- 2. Movimiento rápido pero controlado
-    local info = TweenInfo.new(0.6, Enum.EasingStyle.Linear)
-    local tw = game:GetService("TweenService"):Create(root, info, {CFrame = objetivo * CFrame.new(0, 1.5, 0)})
-    tw:Play()
-    tw.Completed:Wait()
+    -- PASO 1: Viaje rápido hasta 6 metros ANTES de la base
+    local puntoEspera = objetivo * CFrame.new(0, 0, 6) 
+    local tw1 = game:GetService("TweenService"):Create(root, TweenInfo.new(0.6, Enum.EasingStyle.Linear), {CFrame = puntoEspera})
+    tw1:Play()
+    tw1.Completed:Wait()
     
-    -- 3. EL TRUCO FINAL: Resetear el cuerpo antes de tocar el suelo
-    root.Anchored = true -- Te congela en el aire 
-    root.Velocity = Vector3.new(0,0,0) -- Borra la velocidad de impacto
-    task.wait(0.2) -- Tiempo para que el servidor se calme
-    root.Anchored = false -- Te suelta
+    -- PASO 2: PARADA TÉCNICA (Limpieza de rastro del Anti-Cheat)
+    root.Anchored = true
+    root.Velocity = Vector3.new(0,0,0)
+    task.wait(0.3) -- Tiempo para que el servidor deje de sospechar
+    root.Anchored = false
     
-    -- 4. Toque suave para anotar
-    root.CFrame = objetivo
-    hum:ChangeState(Enum.HumanoidStateType.Jumping) -- Salta para activar el sensor
+    -- PASO 3: ENTRADA SUAVE (Velocidad "legal")
+    local tw2 = game:GetService("TweenService"):Create(root, TweenInfo.new(0.4, Enum.EasingStyle.QuadOut), {CFrame = objetivo})
+    tw2:Play()
+    tw2.Completed:Wait()
+    
+    -- PASO 4: ACTIVAR PUNTO
+    task.wait(0.1)
+    hum.Jump = true
 end
 
 -- 1. BASE ENEMIGA
@@ -75,12 +78,12 @@ btn1.MouseButton1Click:Connect(function()
             end
         end
     end
-    if destino then ViajeLimpio(destino) end
+    if destino then MoverSeguro(destino) end
 end)
 
 -- 2. MI BASE
 btn2.MouseButton1Click:Connect(function()
-    ViajeLimpio(MiBasePos)
+    MoverSeguro(MiBasePos)
 end)
 
 -- 3. SALTO INFINITO
