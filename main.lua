@@ -2,7 +2,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "NEW DUELOS V1.1 🔴",
-   LoadingTitle = "CARGANDO SISTEMA DE ROBO...",
+   LoadingTitle = "CARGANDO SISTEMA ANTIBAN...",
    LoadingSubtitle = "by Anto",
    ConfigurationSaving = { Enabled = false },
    KeySystem = false
@@ -12,23 +12,19 @@ local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 
--- 🔍 BUSCADOR AVANZADO DE BRAINROT
+-- 🔍 BUSCADOR DE OBJETOS MEJORADO
 local function findBrainrot()
     for _, v in pairs(workspace:GetDescendants()) do
-        -- Busca cualquier objeto que tenga "Brain" en el nombre o que sea el objetivo del juego
-        if v:IsA("BasePart") and (v.Name:find("Brain") or v:FindFirstChild("TouchInterest") or v.Name == "Object") then
-            -- Verificamos que no sea una parte del mapa común
-            if v.Parent:IsA("Model") or v.Size.Magnitude < 10 then 
-                return v
-            end
+        if v:IsA("BasePart") and (v.Name:find("Brain") or v.Name == "Object" or v.Name == "Goal") then
+            if not v:IsDescendantOf(char) then return v end
         end
     end
     return nil
 end
 
-local Tab = Window:CreateTab("AUTOFARM", 4483362458)
+local Tab = Window:CreateTab("PRINCIPAL", 4483362458)
 
--- 1. TELEPORT AL BRAINROT (Corregido)
+-- 1. TELEPORT AL BRAINROT (CON ANCLA PARA QUE NO TE REGRESE)
 Tab:CreateButton({
    Name = "TELEPORT AL BRAINROT",
    Callback = function()
@@ -36,83 +32,100 @@ Tab:CreateButton({
        if target then
            root.Velocity = Vector3.new(0,0,0)
            root.CFrame = target.CFrame * CFrame.new(0, 2, 0)
-       else
-           Rayfield:Notify({Title = "Error", Content = "No se vio el Brainrot en el mapa", Duration = 2})
+           -- Pequeño truco para que el servidor acepte la posición
+           task.wait(0.1)
+           root.Anchored = true
+           task.wait(0.1)
+           root.Anchored = false
        end
    end,
 })
 
--- 2. AUTO GRAB (LO ROBA POR TI)
+-- 2. AUTO GRAB (RECOGER REAL)
 Tab:CreateToggle({
-   Name = "AUTO GRAB (RECOGER)",
+   Name = "RECOGER AUTOMATICO",
    CurrentValue = false,
    Flag = "AutoGrab",
    Callback = function(Value)
        _G.AutoGrab = Value
-       while _G.AutoGrab do
-           task.wait(0.1)
-           local target = findBrainrot()
-           if target then
-               local dist = (root.Position - target.Position).Magnitude
-               if dist < 10 then
-                   -- Intenta tocarlo y activar la herramienta
+       spawn(function()
+           while _G.AutoGrab do
+               task.wait(0.1)
+               local target = findBrainrot()
+               if target and (root.Position - target.Position).Magnitude < 15 then
+                   -- Forzamos el toque
                    firetouchinterest(root, target, 0)
                    firetouchinterest(root, target, 1)
-                   local tool = char:FindFirstChildOfClass("Tool")
-                   if tool then tool:Activate() end
+                   -- Intentamos equipar herramienta si hay
+                   local tool = player.Backpack:FindFirstChildOfClass("Tool")
+                   if tool then hum:EquipTool(tool) end
+                   if char:FindFirstChildOfClass("Tool") then
+                       char:FindFirstChildOfClass("Tool"):Activate()
+                   end
                end
            end
-       end
+       end)
    end,
 })
 
--- 3. IR A MI BASE AUTOMÁTICO (CORREGIDO)
+-- 3. IR A MI BASE (BUSCADOR DE SPAWN)
 Tab:CreateButton({
-   Name = "IR A MI BASE (INSTANT)",
+   Name = "IR A MI BASE",
    Callback = function()
-       -- Busca tu zona de entrega por color o por nombre de tu equipo
-       local base = workspace:FindFirstChild(player.TeamColor.Name .. " Base") or workspace:FindFirstChild("Base" .. player.Name)
-       
-       if not base then
-           -- Si no encuentra base por nombre, busca el Spawn directo
-           base = player.RespawnLocation
-       end
-
-       if base then
+       -- Busca la parte más cercana al inicio que no sea la del enemigo
+       local mySpawn = player.RespawnLocation
+       if mySpawn then
            root.Velocity = Vector3.new(0,0,0)
-           root.CFrame = base.CFrame * CFrame.new(0, 5, 0)
+           root.CFrame = mySpawn.CFrame * CFrame.new(0, 5, 0)
+           task.wait(0.1)
+           root.Anchored = true
+           task.wait(0.1)
+           root.Anchored = false
        else
-           -- Si todo falla, te lleva a una posición segura del mapa (coordenadas comunes de bases)
-           root.CFrame = CFrame.new(0, 100, 0) 
-           Rayfield:Notify({Title = "Aviso", Content = "Base no encontrada, buscando zona segura", Duration = 2})
+           Rayfield:Notify({Title = "Error", Content = "No detecto tu base, camina a ella y usa 'Set Base'", Duration = 3})
        end
    end,
 })
 
 local Tab2 = Window:NewTab("MEJORAS", 4483362458)
 
--- 4. FLOAT (SALTO MEJORADO)
-Tab:CreateToggle({
-   Name = "FLOAT (MEJORADO)",
+-- 4. FLOAT (VOLAR)
+Tab2:CreateToggle({
+   Name = "VOLAR (FLOAT)",
    CurrentValue = false,
-   Flag = "FloatFix",
+   Flag = "Volar",
    Callback = function(Value)
-       _G.Float = Value
-       game:GetService("RunService").RenderStepped:Connect(function()
-           if _G.Float and game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
-               root.Velocity = Vector3.new(root.Velocity.X, 35, root.Velocity.Z)
+       _G.Volar = Value
+       spawn(function()
+           while _G.Volar do
+               task.wait()
+               if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
+                   root.Velocity = Vector3.new(root.Velocity.X, 45, root.Velocity.Z)
+               end
            end
        end)
    end,
 })
 
--- 5. VELOCIDAD
-Tab:CreateSlider({
+-- 5. ANTI RAGDOLL
+Tab2:CreateToggle({
+   Name = "ANTI RAGDOLL",
+   CurrentValue = true,
+   Callback = function(v) _G.AntiRagdoll = v end
+})
+
+-- 6. VELOCIDAD
+Tab2:CreateSlider({
    Name = "VELOCIDAD",
-   Range = {16, 200},
+   Range = {16, 150},
    Increment = 1,
    CurrentValue = 16,
-   Callback = function(Value)
-       char.Humanoid.WalkSpeed = Value
-   end,
+   Callback = function(v) char.Humanoid.WalkSpeed = v end,
 })
+
+-- Bucle para AntiRagdoll constante
+game:GetService("RunService").Stepped:Connect(function()
+    if _G.AntiRagdoll and char:FindFirstChild("Humanoid") then
+        char.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+end)
