@@ -1,6 +1,6 @@
--- LIMPIEZA TOTAL
+-- LIMPIEZA TOTAL DE VERSIONES FALLIDAS
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_FINAL_V13" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_MASTER_V18" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,7 +9,7 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ULTRA_FINAL_V13"
+ScreenGui.Name = "ANTO_MASTER_V18"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
 Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
@@ -29,8 +29,8 @@ local function Estilo(btn, texto, pos, color)
     btn.TextSize = 13
 end
 
-Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(150, 0, 0))
-Estilo(btn2, "2. ANOTAR (PUNTO REAL)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 180, 50))
+Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(200, 0, 0))
+Estilo(btn2, "2. ANOTAR EN MI BASE", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 150, 80))
 Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(60, 60, 60))
 
 local player = game.Players.LocalPlayer
@@ -38,72 +38,67 @@ local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
 
--- GUARDA TU BASE
-local MiBasePos = root.CFrame
+-- GUARDA TU BASE AL EJECUTAR
+local MiBasePos = root.Position
 
--- FUNCIÓN DE CAMINATA ULTRA RÁPIDA (SOLUCIONA EL BUGEO)
-local function ViajeSinBugeo(objetivo)
-    -- 1. Quitar colisiones con jugadores para que no te traben
+-- FUNCIÓN DE MOVIMIENTO LEGÍTIMO A ALTA VELOCIDAD
+local function ViajePerfecto(destinoPos)
+    -- 1. Desactivamos colisiones para que no te trabes con nada
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = false end
     end
 
-    -- 2. Limpiar velocidades
-    root.Velocity = Vector3.new(0,0,0)
-
-    -- 3. MODO CAMINATA FORZADA (Divide el trayecto en 10 partes para que el server lo vea legal)
-    local pasos = 10
-    for i = 1, pasos do
-        local meta = root.CFrame:Lerp(objetivo, i/pasos)
-        
-        -- Usamos Tween corto pero PEGADO al suelo
-        local tw = game:GetService("TweenService"):Create(root, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {CFrame = meta})
-        tw:Play()
-        tw.Completed:Wait()
-        
-        -- "Pisar" el suelo para el servidor
-        root.Velocity = Vector3.new(0, -50, 0) 
-        task.wait(0.02)
+    -- 2. El TRUCO: Aumentar WalkSpeed al límite justo antes de que el Anti-Cheat actúe
+    local speedOriginal = hum.WalkSpeed
+    hum.WalkSpeed = 95 -- Velocidad súper rápida pero "procesable" por el server
+    
+    -- 3. Usamos MoveTo para que el servidor vea que CAMINASTE el trayecto
+    hum:MoveTo(destinoPos)
+    
+    -- Esperamos a que llegue o que esté muy cerca
+    while (root.Position - destinoPos).Magnitude > 4 do
+        -- Forzamos que no se detenga si algo lo empuja
+        hum:MoveTo(destinoPos)
+        task.wait(0.05)
     end
 
-    -- 4. CONFIRMACIÓN FINAL
+    -- 4. Al llegar, frenado y confirmación
+    hum.WalkSpeed = speedOriginal
     root.Anchored = true
-    task.wait(0.5) -- Pausa necesaria para que el servidor guarde tu posición
+    task.wait(0.3)
     root.Anchored = false
     
-    -- 5. RE-ACTIVAR FÍSICAS
+    -- 5. Reactivamos colisiones
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = true end
     end
 
-    -- 6. FORZAR PUNTO (Doble salto y caminata corta)
-    hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    task.wait(0.1)
-    hum:Move(Vector3.new(0,0,1), true)
-    task.wait(0.1)
-    hum:Move(Vector3.new(0,0,0), true)
+    -- 6. Salto para asegurar que el sensor de puntos te detecte
+    hum.Jump = true
 end
 
--- 1. BASE ENEMIGA
+-- BOTÓN 1: BUSCAR BASE ENEMIGA
 btn1.MouseButton1Click:Connect(function()
     local destino = nil
+    local maxDist = 0
     for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") and (v.Name:lower():find("goal") or v.Name:lower():find("base")) then
-            if (v.Position - MiBasePos.Position).Magnitude > 60 then
-                destino = v.CFrame
-                break
+        if v:IsA("BasePart") and (v.Name:lower():find("goal") or v.Name:lower():find("deliver")) then
+            local d = (v.Position - MiBasePos).Magnitude
+            if d > maxDist then
+                maxDist = d
+                destino = v.Position
             end
         end
     end
-    if destino then ViajeSinBugeo(destino) end
+    if destino then ViajePerfecto(destino) end
 end)
 
--- 2. MI BASE
+-- BOTÓN 2: VOLVER A MI BASE
 btn2.MouseButton1Click:Connect(function()
-    ViajeSinBugeo(MiBasePos)
+    ViajePerfecto(MiBasePos)
 end)
 
--- 3. SALTO INFINITO
+-- BOTÓN 3: SALTO INFINITO
 local SaltoActivo = false
 btn3.MouseButton1Click:Connect(function()
     SaltoActivo = not SaltoActivo
@@ -115,13 +110,13 @@ game:GetService("UserInputService").JumpRequest:Connect(function()
     if SaltoActivo then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
--- AUTO-RECOGER
+-- AUTO-RECOGER OBJETOS (Brainrot)
 task.spawn(function()
     while true do
         task.wait(0.1)
         for _, p in pairs(workspace:GetDescendants()) do
             if p:IsA("ProximityPrompt") then
-                if (root.Position - p.Parent.Position).Magnitude < 15 then
+                if (root.Position - p.Parent.Position).Magnitude < 20 then
                     fireproximityprompt(p)
                 end
             end
