@@ -1,6 +1,6 @@
--- LIMPIEZA TOTAL
+-- LIMPIEZA DE SCRIPTS ANTERIORES
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_FIX_V4" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_FINAL_V5" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,10 +9,10 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ULTRA_FIX_V4"
+ScreenGui.Name = "ANTO_ULTRA_FINAL_V5"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Frame.Position = UDim2.new(0.5, -90, 0.3, 0)
 Frame.Size = UDim2.new(0, 180, 0, 240)
 Frame.Active = true
@@ -30,7 +30,7 @@ local function Estilo(btn, texto, pos, color)
 end
 
 Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
-Estilo(btn2, "2. IR A MI BASE\n(ANOTAR)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 100, 180))
+Estilo(btn2, "2. ANOTAR EN MI BASE", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 100, 180))
 Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(60, 60, 60))
 
 local player = game.Players.LocalPlayer
@@ -38,35 +38,33 @@ local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
 
--- GUARDA TU BASE (IMPORTANTE: Hazlo parado donde se entregan los puntos)
+-- GUARDA TU BASE (PARADO EN EL CENTRO DE ENTREGA)
 local MiBasePos = root.CFrame
 
--- FUNCIÓN DE DESLIZAMIENTO POR EL SUELO (PARA NO MORIR)
-local function IrSeguro(objetivo)
+-- FUNCIÓN DE MOVIMIENTO INTELIGENTE (NO MÁS MUERTES)
+local function ViajeSeguro(objetivo)
     root.Velocity = Vector3.new(0,0,0)
     
-    -- Nos deslizamos pegados al piso (Y = 3 es la altura del suelo normal)
-    local destinoSuelo = CFrame.new(objetivo.Position.X, root.Position.Y, objetivo.Position.Z)
+    -- Tween con frenado suave (OutQuad)
+    -- Esto hace que empieces rápido pero llegues despacio para que el server no te mate
+    local info = TweenInfo.new(0.85, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tw = game:GetService("TweenService"):Create(root, info, {CFrame = objetivo})
     
-    local info = TweenInfo.new(0.6, Enum.EasingStyle.Sine) -- Viaje muy rápido de 0.6 segundos
-    local tw = game:GetService("TweenService"):Create(root, info, {CFrame = destinoSuelo})
     tw:Play()
     tw.Completed:Wait()
     
-    -- Al llegar, forzamos la posición final para anotar
-    root.CFrame = objetivo
+    -- Al llegar, hacemos un pequeño movimiento para asegurar el punto
     task.wait(0.1)
-    hum.Jump = true -- Salto pequeño para activar el sensor
+    hum:Move(Vector3.new(0, 0, -1), true)
+    root.Velocity = Vector3.new(0, -10, 0) -- Empujón al suelo
 end
 
--- 1. IR A LA BASE ENEMIGA (CORREGIDO)
+-- 1. BUSCAR BASE ENEMIGA
 btn1.MouseButton1Click:Connect(function()
     local destino = nil
-    -- Busca la zona que esté más lejos de tu base inicial
     for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") and (v.Name:lower():find("goal") or v.Name:lower():find("spawn") or v.Name:lower():find("deliver")) then
-            local dist = (v.Position - MiBasePos.Position).Magnitude
-            if dist > 60 then -- Si está a más de 60 studs, es la del enemigo
+        if v:IsA("BasePart") and (v.Name:lower():find("goal") or v.Name:lower():find("base") or v.Name:lower():find("deliver")) then
+            if (v.Position - MiBasePos.Position).Magnitude > 60 then
                 destino = v.CFrame
                 break
             end
@@ -74,24 +72,24 @@ btn1.MouseButton1Click:Connect(function()
     end
     
     if destino then
-        IrSeguro(destino * CFrame.new(0, 2, 0))
+        ViajeSeguro(destino * CFrame.new(0, 2, 0))
     else
-        -- Si no encuentra la base, va al jugador enemigo
+        -- Si no encuentra la base, va al oponente
         for _, p in pairs(game.Players:GetPlayers()) do
             if p ~= player and p.Character then
-                IrSeguro(p.Character.HumanoidRootPart.CFrame)
+                ViajeSeguro(p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 4))
                 break
             end
         end
     end
 end)
 
--- 2. IR A MI BASE
+-- 2. VOLVER A MI BASE PARA ANOTAR
 btn2.MouseButton1Click:Connect(function()
-    IrSeguro(MiBasePos)
+    ViajeSeguro(MiBasePos)
 end)
 
--- 3. SALTO INFINITO
+-- 3. SALTO INFINITO (PARA EVITAR QUE TE PEGUEN)
 local SaltoActivo = false
 btn3.MouseButton1Click:Connect(function()
     SaltoActivo = not SaltoActivo
@@ -103,7 +101,7 @@ game:GetService("UserInputService").JumpRequest:Connect(function()
     if SaltoActivo then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
--- AUTO-RECOGER
+-- AUTO-RECOGER (SIEMPRE ENCENDIDO)
 task.spawn(function()
     while true do
         task.wait(0.1)
