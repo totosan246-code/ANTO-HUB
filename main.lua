@@ -1,6 +1,6 @@
--- LIMPIEZA TOTAL
+-- LIMPIEZA
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_GOD_V10" then v:Destroy() end
+    if v:IsA("ScreenGui") and v.Name == "ANTO_ULTRA_FIX_V11" then v:Destroy() end
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -9,10 +9,10 @@ local btn1 = Instance.new("TextButton")
 local btn2 = Instance.new("TextButton")
 local btn3 = Instance.new("TextButton")
 
-ScreenGui.Name = "ANTO_ULTRA_GOD_V10"
+ScreenGui.Name = "ANTO_ULTRA_FIX_V11"
 ScreenGui.Parent = game.CoreGui
 Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Frame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
 Frame.Position = UDim2.new(0.5, -90, 0.3, 0)
 Frame.Size = UDim2.new(0, 180, 0, 240)
 Frame.Active = true
@@ -29,8 +29,8 @@ local function Estilo(btn, texto, pos, color)
     btn.TextSize = 13
 end
 
-Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
-Estilo(btn2, "2. ANOTAR (PUNTO FIJO)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 150, 100))
+Estilo(btn1, "1. IR A BASE ENEMIGA", UDim2.new(0, 10, 0, 10), Color3.fromRGB(150, 0, 0))
+Estilo(btn2, "2. ANOTAR (PUNTO FIJO)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 150, 50))
 Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(60, 60, 60))
 
 local player = game.Players.LocalPlayer
@@ -41,36 +41,41 @@ local hum = char:WaitForChild("Humanoid")
 -- GUARDA TU BASE
 local MiBasePos = root.CFrame
 
--- FUNCIÓN DEFINITIVA: VIAJE CON DESCOMPRESIÓN
-local function ViajeSeguro(objetivo)
-    -- 1. Quitamos colisiones para evitar morir por choque
+-- FUNCIÓN QUE "CLAVA" TU POSICIÓN EN EL SERVIDOR
+local function ViajeFijo(objetivo)
+    -- 1. Desactivar colisiones
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = false end
     end
 
-    -- 2. RESET de energía
+    -- 2. RESET de físicas
     root.Velocity = Vector3.new(0,0,0)
-    root.RotVelocity = Vector3.new(0,0,0)
 
-    -- 3. VIAJE SUAVE (1.3 segundos para máxima seguridad)
-    local info = TweenInfo.new(1.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+    -- 3. VIAJE (Un poco más lento para que el server lo acepte mejor: 1.5s)
+    local info = TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
     local tw = game:GetService("TweenService"):Create(root, info, {CFrame = objetivo * CFrame.new(0, 1, 0)})
     tw:Play()
     tw.Completed:Wait()
 
-    -- 4. EL FRENADO (CONGELACIÓN): Esto evita que el server te mate o te regrese
+    -- 4. EL TRUCO PARA QUE NO TE REGRESE:
     root.Anchored = true 
-    root.Velocity = Vector3.new(0,0,0)
-    task.wait(0.4) -- Esperamos a que el servidor registre que ya llegamos
+    task.wait(0.5) -- Espera medio segundo (crucial para el server)
     root.Anchored = false
-
-    -- 5. RE-ACTIVAR FÍSICAS Y ANOTAR
+    
+    -- 5. RE-ACTIVAR COLISIONES
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then part.CanCollide = true end
     end
+
+    -- 6. DOBLE SALTO DE CONFIRMACIÓN (Esto evita el Rubberband)
+    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    task.wait(0.2)
+    hum:ChangeState(Enum.HumanoidStateType.Jumping)
     
+    -- Caminar un poquito para asegurar el sensor
+    hum:Move(Vector3.new(0, 0, -1), true)
     task.wait(0.1)
-    hum:ChangeState(Enum.HumanoidStateType.Jumping) -- Salto para activar el sensor
+    hum:Move(Vector3.new(0, 0, 0), true)
 end
 
 -- 1. BASE ENEMIGA
@@ -84,12 +89,12 @@ btn1.MouseButton1Click:Connect(function()
             end
         end
     end
-    if destino then ViajeSeguro(destino) end
+    if destino then ViajeFijo(destino) end
 end)
 
 -- 2. MI BASE
 btn2.MouseButton1Click:Connect(function()
-    ViajeSeguro(MiBasePos)
+    ViajeFijo(MiBasePos)
 end)
 
 -- 3. SALTO INFINITO
