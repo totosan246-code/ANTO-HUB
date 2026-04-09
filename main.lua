@@ -30,7 +30,7 @@ local function Estilo(btn, texto, pos, color)
 end
 
 Estilo(btn1, "1. IR AL BRAINROT", UDim2.new(0, 10, 0, 10), Color3.fromRGB(180, 0, 0))
-Estilo(btn2, "2. ANOTAR PUNTO\n(FORZAR SERVER)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 80, 200))
+Estilo(btn2, "2. CORRER A BASE\n(ANOTAR)", UDim2.new(0, 10, 0, 85), Color3.fromRGB(0, 80, 200))
 Estilo(btn3, "SALTO INFINITO: OFF", UDim2.new(0, 10, 0, 160), Color3.fromRGB(60, 60, 60))
 
 local player = game.Players.LocalPlayer
@@ -38,46 +38,36 @@ local char = player.Character or player.CharacterAdded:Wait()
 local root = char:WaitForChild("HumanoidRootPart")
 local hum = char:WaitForChild("Humanoid")
 
--- GUARDA TU BASE (Hazlo parado en el centro de tu base)
+-- GUARDA TU BASE (PARADO EN EL CENTRO)
 local MiBasePos = root.CFrame
 
--- 1. IR AL BRAINROT (TELEPORT CON RESET DE VELOCIDAD)
+-- 1. IR AL BRAINROT (TELEPORT CORTO PARA QUE NO HAGA ROLLBACK)
 btn1.MouseButton1Click:Connect(function()
     local target = nil
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("ProximityPrompt") then
-            local dist = (v.Parent.Position - MiBasePos.Position).Magnitude
-            if dist > 40 then target = v.Parent break end
+            if (v.Parent.Position - MiBasePos.Position).Magnitude > 30 then
+                target = v.Parent
+                break
+            end
         end
     end
     if target then
-        root.Velocity = Vector3.new(0,0,0)
-        root.CFrame = target.CFrame * CFrame.new(0, 2, 0)
+        -- Teleport más cerca, no encima, para que no salte el anti-cheat
+        root.CFrame = target.CFrame * CFrame.new(0, 0, 3)
     end
 end)
 
--- 2. ANOTAR PUNTO (ELIMINA EL BUG DE SERVER)
+-- 2. CORRER A BASE (EL MÉTODO QUE SÍ ANOTA)
 btn2.MouseButton1Click:Connect(function()
-    -- PASO 1: Reset de físicas
-    root.Velocity = Vector3.new(0,0,0)
-    
-    -- PASO 2: Teleport al Cielo (Para limpiar la posición vieja en el server)
-    root.CFrame = MiBasePos * CFrame.new(0, 50, 0)
-    task.wait(0.1)
-    
-    -- PASO 3: Teleport a la Base
-    root.CFrame = MiBasePos
-    
-    -- PASO 4: Movimiento forzado (Saltar y Caminar) para activar el sensor
-    local start = tick()
-    while tick() - start < 1.5 do
-        hum.Jump = true -- Salta para tocar el sensor desde arriba
-        hum:Move(Vector3.new(math.random(-1,1), 0, math.random(-1,1)), true)
-        task.wait(0.1)
-    end
+    -- Subimos la velocidad al máximo permitido para que sea "caminar rápido"
+    hum.WalkSpeed = 100 
+    -- MoveTo es detectado como movimiento legítimo por el servidor
+    hum:MoveTo(MiBasePos.Position)
+    -- El servidor no te regresará porque no es un teleport, es una caminata rápida
 end)
 
--- 3. SALTO INFINITO (VOLAR)
+-- 3. SALTO INFINITO
 local SaltoActivo = false
 btn3.MouseButton1Click:Connect(function()
     SaltoActivo = not SaltoActivo
@@ -89,7 +79,7 @@ game:GetService("UserInputService").JumpRequest:Connect(function()
     if SaltoActivo then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
--- AUTO-RECOGER (SIEMPRE ACTIVO)
+-- AUTO-RECOGER
 task.spawn(function()
     while true do
         task.wait(0.05)
